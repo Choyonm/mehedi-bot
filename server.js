@@ -5,6 +5,15 @@ const path = require("path");
 const app = express();
 app.use(express.json({ limit: "5mb" }));
 
+// CORS — Admin Panel থেকে connect করতে দেয়
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type, x-admin-password");
+  if (req.method === "OPTIONS") return res.sendStatus(200);
+  next();
+});
+
 // ============================================================
 // Railway Variables এ এগুলো দিন (একবারই)
 // ============================================================
