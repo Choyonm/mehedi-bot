@@ -4,7 +4,7 @@ const fs = require("fs");
 const path = require("path");
 const app = express();
 app.use(express.json({ limit: "5mb" }));
-
+ 
 // CORS — Admin Panel থেকে connect করতে দেয়
 app.use((req, res, next) => {
   res.header("Access-Control-Allow-Origin", "*");
@@ -13,19 +13,19 @@ app.use((req, res, next) => {
   if (req.method === "OPTIONS") return res.sendStatus(200);
   next();
 });
-
+ 
 // ============================================================
 // Railway Variables এ এগুলো দিন (একবারই)
 // ============================================================
 const VERIFY_TOKEN = "mehedi_bot_2024";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "mehedi2024";
-
+ 
 // ============================================================
 // Config files
 // ============================================================
 const CONFIG_FILE = path.join(__dirname, "config.json");
 const KEYS_FILE = path.join(__dirname, "keys.json");
-
+ 
 // Default bot config
 const DEFAULT_CONFIG = {
   bot_on: true,
@@ -44,53 +44,53 @@ const DEFAULT_CONFIG = {
     { id:5, name:"কম্বো ৫", price:348, details:"Large ৩ পিস অর্গানিক মেহেদী + ১ পিস গিফট 🎁✨", image_url:"", reply:"✨ কম্বো ৫ — মাত্র ৩৪৮ টাকা\n📦 Large ৩ পিস + ১ পিস গিফট 🎁\n🚚 ডেলিভারি চার্জ ফ্রি ✅\n\nনিতে চাইলে আপনার নামটা জানাবেন? 🌸" },
   ],
 };
-
+ 
 // Default keys
 const DEFAULT_KEYS = {
   page_access_token: process.env.PAGE_ACCESS_TOKEN || "",
   anthropic_api_key: process.env.ANTHROPIC_API_KEY || "",
 };
-
+ 
 function loadConfig() {
   try { if (fs.existsSync(CONFIG_FILE)) return JSON.parse(fs.readFileSync(CONFIG_FILE, "utf8")); } catch(e) {}
   return { ...DEFAULT_CONFIG };
 }
-
+ 
 function loadKeys() {
   try { if (fs.existsSync(KEYS_FILE)) return JSON.parse(fs.readFileSync(KEYS_FILE, "utf8")); } catch(e) {}
   return { ...DEFAULT_KEYS };
 }
-
+ 
 function saveConfig(data) {
   try { fs.writeFileSync(CONFIG_FILE, JSON.stringify(data, null, 2)); return true; } catch(e) { return false; }
 }
-
+ 
 function saveKeys(data) {
   try { fs.writeFileSync(KEYS_FILE, JSON.stringify(data, null, 2)); return true; } catch(e) { return false; }
 }
-
+ 
 if (!fs.existsSync(CONFIG_FILE)) saveConfig(DEFAULT_CONFIG);
 if (!fs.existsSync(KEYS_FILE)) saveKeys(DEFAULT_KEYS);
-
+ 
 // Auth middleware
 function auth(req, res, next) {
   if (req.headers["x-admin-password"] !== ADMIN_PASSWORD) return res.status(401).json({ error: "Unauthorized" });
   next();
 }
-
+ 
 // ============================================================
 // Admin APIs
 // ============================================================
-
+ 
 // Bot config নেওয়া
 app.get("/admin/config", auth, (req, res) => res.json(loadConfig()));
-
+ 
 // Bot config update
 app.post("/admin/config", auth, (req, res) => {
   if (saveConfig(req.body)) { console.log("✅ Config updated"); res.json({ success: true }); }
   else res.status(500).json({ error: "Save failed" });
 });
-
+ 
 // API Keys নেওয়া (masked)
 app.get("/admin/keys", auth, (req, res) => {
   const keys = loadKeys();
@@ -101,7 +101,7 @@ app.get("/admin/keys", auth, (req, res) => {
     anthropic_api_key_preview: keys.anthropic_api_key ? keys.anthropic_api_key.substring(0, 10) + "..." : "",
   });
 });
-
+ 
 // API Keys update
 app.post("/admin/keys", auth, (req, res) => {
   const current = loadKeys();
@@ -112,13 +112,13 @@ app.post("/admin/keys", auth, (req, res) => {
   if (saveKeys(updated)) { console.log("✅ API Keys updated"); res.json({ success: true }); }
   else res.status(500).json({ error: "Save failed" });
 });
-
+ 
 // ============================================================
 // Sessions
 // ============================================================
 const sessions = {};
 const delay = ms => new Promise(r => setTimeout(r, ms));
-
+ 
 // ============================================================
 // Facebook helpers
 // ============================================================
@@ -132,7 +132,7 @@ async function sendText(to, text) {
     );
   } catch(e) { console.error("sendText:", e.response?.data || e.message); }
 }
-
+ 
 async function sendImage(to, url) {
   const keys = loadKeys();
   try {
@@ -143,7 +143,7 @@ async function sendImage(to, url) {
     );
   } catch(e) { console.error("sendImage:", e.response?.data || e.message); }
 }
-
+ 
 // ============================================================
 // Claude AI — intent বোঝে
 // ============================================================
@@ -151,7 +151,7 @@ async function findMatch(userMessage, config) {
   const keys = loadKeys();
   const comboList = config.combos.map(c => `id ${c.id}: "${c.name}" (${c.price} টাকা)`).join("\n");
   const savedList = config.saved_messages.map((m, i) => `index ${i}: ${m.intent}`).join("\n");
-
+ 
   try {
     const res = await axios.post(
       "https://api.anthropic.com/v1/messages",
@@ -169,7 +169,7 @@ async function findMatch(userMessage, config) {
     return JSON.parse(clean);
   } catch(e) { return { type: "none" }; }
 }
-
+ 
 // ============================================================
 // Combo list পাঠানো
 // ============================================================
@@ -183,7 +183,7 @@ async function sendAllCombos(to, config) {
   }
   await sendText(to, "কোন কম্বোটি নিতে চান? 💚");
 }
-
+ 
 // ============================================================
 // Address flow
 // ============================================================
@@ -208,7 +208,7 @@ async function handleAddressFlow(senderId, text, session) {
   }
   return false;
 }
-
+ 
 // ============================================================
 // Main handler
 // ============================================================
@@ -217,16 +217,16 @@ async function handleMessage(senderId, text) {
   if (!config.bot_on) return;
   text = (text || "").trim();
   if (!text) return;
-
+ 
   if (!sessions[senderId]) sessions[senderId] = { state: null, data: {} };
   const session = sessions[senderId];
-
+ 
   if (session.state?.startsWith("addr_")) {
     if (await handleAddressFlow(senderId, text, session)) return;
   }
-
+ 
   const match = await findMatch(text, config);
-
+ 
   if (match.type === "combo_list") { await sendAllCombos(senderId, config); return; }
   if (match.type === "combo") {
     const combo = config.combos.find(c => c.id === match.combo_id);
@@ -245,7 +245,7 @@ async function handleMessage(senderId, text) {
   }
   console.log(`📩 No match | ${senderId} | "${text}"`);
 }
-
+ 
 // ============================================================
 // Webhook
 // ============================================================
@@ -254,7 +254,7 @@ app.get("/webhook", (req, res) => {
     res.status(200).send(req.query["hub.challenge"]);
   else res.sendStatus(403);
 });
-
+ 
 app.post("/webhook", async (req, res) => {
   res.status(200).send("EVENT_RECEIVED");
   const body = req.body;
@@ -264,8 +264,9 @@ app.post("/webhook", async (req, res) => {
       if (event.message && !event.message.is_echo && event.message.text)
         await handleMessage(event.sender.id, event.message.text);
 });
-
+ 
 app.get("/", (req, res) => res.send("🌿 Maimuna's Mehendi AI চালু!"));
-
+ 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`🌿 Bot চালু! Port: ${PORT}`));
+ 
